@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
 # attach packages
 library(tidyverse)
@@ -17,7 +17,7 @@ library(pdftools)
 library(ggwordcloud)
 ```
 
-### Read in and wrangle A Game of Thrones text 
+### Part 1. Read in and wrangle A Game of Thrones text 
 
 ```{r, cache=TRUE}
 # read in pdf of text
@@ -57,7 +57,9 @@ got_nonstop_words <- got_tokens %>%
   anti_join(stop_words)
 ```
 
-### Counts of the most frequently used words in each character's Point-of-View (POV) chapters
+### Part 2. Counts of the most frequently used words in each character's Point-of-View (POV) chapters
+
+**For those who have not read the Game of Thrones book series by George RR Martin:** In these books, chapters are organized by the name of a different character instead of being organized by numbers or titles. The story in each chapter is told from the perspective of the character whose name is used as the chapter title. For example, the chapters titled "BRAN" are told from Bran's point of view, meaning Bran is the POV character for that chapter. Throughout the book, there are multiple chapters for each of the POV characters. This analysis groups word frequency by POV character, not by individual chapter, meaning that results describe total word frequency for each POV character's entire story arc in the A Game of Thrones book.
 
 ```{r}
 # count frequency of words by POV character - and remove Prologue chapter
@@ -65,7 +67,7 @@ got_nonstop_counts <- got_nonstop_words %>%
   count(pov, word) %>% 
   filter(pov != "Prologue")
 
-# remove character names or titles (like ser/lord), as those comprise a lot of the most frequently-used words (also removing 'king's' because 'king' is already listed)
+# remove character names or titles (like ser/lord), as those comprise a lot of the most frequently-used words 
 names <- c("ned", "jon", "arya", "sansa", "bran", "robb", "catelyn", "ser", "lord", "dany", "khal", "drogo", "jorah", "robert", "sansa", "joffrey", "tyrion", "stark", "bronn", "septa", "luwin", "hodor", "littlefinger", "sam", "lannister", "tywin", "syrio", "eddard")
 nonstop_no_names_counts <- got_nonstop_counts %>% 
   filter(!(str_detect(word, paste(names, collapse = "|"))))
@@ -74,13 +76,66 @@ nonstop_no_names_counts <- got_nonstop_counts %>%
 top_5_words <- nonstop_no_names_counts %>% 
   group_by(pov) %>% 
   arrange(-n) %>% 
-  slice(1:5)
+  slice(1:5) %>% 
+  mutate(house = case_when(
+    pov %in% c("Arya", "Bran", "Catelyn", "Eddard", "Sansa") ~ "House Stark",
+    pov == "Daenerys" ~ "House Targaryen",
+    pov == "Tyrion" ~ "House Lannister",
+    pov == "Jon" ~ "Night's Watch"
+  ))
 ```
 
 ```{r}
 # plot each character's top 5 most frequently used words
 ggplot(data = top_5_words, aes(x = fct_reorder(word, n), y = n)) +
-  geom_col(aes(fill = pov), show.legend = FALSE) +
+  geom_col(aes(fill = house)) +
+  scale_fill_manual(values = c("gold2", "darkgrey", "red4", "Black")) +
+  facet_wrap(~pov, scales = "free") +
+  coord_flip()+
+  theme_bw() +
+  theme(legend.position = c(0.85, 0.13)) +
+  theme(legend.title = element_blank()) +
+  labs(title = "Top 5 Most Frequent Words for each POV Character in A Game of Thrones",
+       y = "Count",
+       x = "Words",
+       caption = "Figure 1 - A list of the 5 most frequently used words (not including stop words or character names/common titles) in \nA Game of Thrones by George RR Martin, grouped by each point-of-view characters' chapters. The fill color for each \ncharacter represents the color of the house to which they belong in the Game of Thrones universe.")+
+  theme(plot.caption = element_text(hjust = 0))
+```
+
+### Part 3. Sentiment Analysis using afinn lexicon
+
+Again, the sentiment analysis will be conducted by grouping all of the chapters told by each character's POV together for the entire book. This will provide an analysis of how rough of a time each main character had throughout A Game of Thrones (prediction: given the nature of these stories, it's probably going to be very negative for everyone). 
+
+```{r}
+# join got words dataset with matching words from afinn lexicon
+got_afinn <- got_nonstop_words %>% 
+  filter(pov != "Prologue") %>% 
+  inner_join(get_sentiments("afinn"))
+
+afinn_counts <- got_afinn %>% 
+  count(pov, value)
+
+afinn_means <- got_afinn %>% 
+  group_by(pov) %>% 
+  summarize(mean_afinn = mean(value))
+
+ggplot(data = afinn_means, 
+       aes(x = fct_reorder(pov, -mean_afinn), y = mean_afinn)) +
+  geom_col() +
+  coord_flip()
+```
+
+### Sentiment analysis using NRC
+```{r}
+got_nrc <- got_nonstop_words %>% 
+  filter(pov != "Prologue") %>% 
+  inner_join(get_sentiments("nrc"))
+
+got_nrc_counts <- got_nrc %>% 
+  count(pov, sentiment)
+
+ggplot(data = got_nrc_counts, aes(x = fct_reorder(sentiment, n), y = n)) +
+  geom_col() +
   facet_wrap(~pov, scales = "free") +
   coord_flip()
 ```
