@@ -1,0 +1,87 @@
+---
+title: "Task 3 - Text wrangling and analysis of A Game of Thrones"
+author: "Alex Ehrens"
+date: "2/22/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# attach packages
+library(tidyverse)
+library(here)
+library(tidytext)
+library(textdata)
+library(pdftools)
+library(ggwordcloud)
+```
+
+### Read in and wrangle A Game of Thrones text 
+
+```{r, cache=TRUE}
+# read in pdf of text
+got_text <- pdf_text(here("task3", "fire-blood-george-rr-martin", "A-Game-of-Thrones-George-RR-Martin.pdf"))
+```
+
+```{r}
+# wrangle text into tidy format
+got_tidy <- data.frame(got_text) %>% 
+  mutate(text_full = str_split(got_text, pattern = "\\n")) %>% 
+  unnest(text_full) %>%
+  mutate(text_full = str_trim(text_full))
+
+# each chapter in A Game of Thrones is told from the perspective of a certain character, so I'm creating a list of characters with point-of-view chapters (including the Prologue)
+pov_characters <- c("PROLOGUE", "BRAN", "CATELYN", "DAENERYS", "EDDARD", "JON", "ARYA", "TYRION", "SANSA")
+
+# make data frame of A Game of Thrones text organized into each POV character's chapter
+got_df <- got_tidy %>% 
+  slice(-(1:125)) %>%
+  slice(-(25827:26282)) %>% 
+  mutate(pov = case_when(
+    str_detect(text_full, paste(pov_characters, collapse = "|")) ~ text_full, # detecting strings that include any of the POV character names 
+    TRUE ~ NA_character_
+  )) %>% 
+  fill(pov) %>% 
+  mutate(pov = str_to_title(pov))
+```
+
+```{r}
+# get tokens of each word of the text, still organized by POV character
+got_tokens <- got_df %>% 
+  unnest_tokens(word, text_full) %>% 
+  select(-got_text)
+
+# remove stop words from the stop_words lexicon
+got_nonstop_words <- got_tokens %>% 
+  anti_join(stop_words)
+```
+
+### Counts of the most frequently used words in each character's Point-of-View (POV) chapters
+
+```{r}
+# count frequency of words by POV character - and remove Prologue chapter
+got_nonstop_counts <- got_nonstop_words %>% 
+  count(pov, word) %>% 
+  filter(pov != "Prologue")
+
+# remove character names or titles (like ser/lord), as those comprise a lot of the most frequently-used words (also removing 'king's' because 'king' is already listed)
+names <- c("ned", "jon", "arya", "sansa", "bran", "robb", "catelyn", "ser", "lord", "dany", "khal", "drogo", "jorah", "robert", "sansa", "joffrey", "tyrion", "stark", "bronn", "septa", "luwin", "hodor", "littlefinger", "sam", "lannister", "tywin", "syrio", "eddard")
+nonstop_no_names_counts <- got_nonstop_counts %>% 
+  filter(!(str_detect(word, paste(names, collapse = "|"))))
+
+# pull out the top 5 most frequently used words in each character's chapters
+top_5_words <- nonstop_no_names_counts %>% 
+  group_by(pov) %>% 
+  arrange(-n) %>% 
+  slice(1:5)
+```
+
+```{r}
+# plot each character's top 5 most frequently used words
+ggplot(data = top_5_words, aes(x = fct_reorder(word, n), y = n)) +
+  geom_col(aes(fill = pov), show.legend = FALSE) +
+  facet_wrap(~pov, scales = "free") +
+  coord_flip()
+```
+
