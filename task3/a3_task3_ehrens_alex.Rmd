@@ -2,7 +2,9 @@
 title: "Task 3 - Text wrangling and analysis of A Game of Thrones"
 author: "Alex Ehrens"
 date: "2/22/2021"
-output: html_document
+output: 
+  html_document:
+    code_folding: hide
 ---
 
 ```{r setup, include=FALSE}
@@ -117,26 +119,28 @@ afinn_counts <- got_afinn %>%
 
 afinn_means <- got_afinn %>% 
   group_by(pov) %>% 
-  summarize(mean_afinn = mean(value))
+  summarize(mean_afinn = mean(value)) %>% 
+  mutate(house = case_when(
+    pov %in% c("Arya", "Bran", "Catelyn", "Eddard", "Sansa") ~ "House Stark",
+    pov == "Daenerys" ~ "House Targaryen",
+    pov == "Tyrion" ~ "House Lannister",
+    pov == "Jon" ~ "Night's Watch"
+  ))
 
 ggplot(data = afinn_means, 
-       aes(x = fct_reorder(pov, -mean_afinn), y = mean_afinn)) +
+       aes(x = fct_reorder(pov, -mean_afinn), y = mean_afinn, fill = house)) +
+  scale_fill_manual(values = c("gold2", "darkgrey", "red4", "Black")) +
   geom_col() +
-  coord_flip()
+  coord_flip() +
+  theme_bw() +
+  theme(legend.title = element_blank(),
+        plot.caption = element_text(hjust = 0)) +
+  labs(title = "Sentiment Analysis of words in each POV character's chapters in \nA Game of Thrones",
+       y = "Mean Sentiment Value (from the 'afinn' lexicon')",
+       x = "Character Name", 
+       caption = "Figure 2 - The results of a sentiment analysis of words used in each POV character's chapters in A Game of Thrones \nby George RR Martin. The sentiment analysis uses the 'afinn' lexicon, which assigns a value from -5 to +5 for each \nword based on how negative or positive the meaning of that word is. The mean value for all words in each character's \nchapters provides a comparison of how negative the story arcs of each POV character are.")
 ```
 
-### Sentiment analysis using NRC
-```{r}
-got_nrc <- got_nonstop_words %>% 
-  filter(pov != "Prologue") %>% 
-  inner_join(get_sentiments("nrc"))
+**Results:** it appears that of all the POV characters, Jon Snow had the most negative mean sentiment value of words used in his chapters throughout A Game of Thrones. While all of the other characters also had overall negative mean sentiment scores, Jon's chapters had the most negative value (`r round(afinn_means$mean_afinn[6], 2)`). A lot of unfortunate things happen to every character in this book, but it seems from this sentiment analysis that Jon Snow's story arc is most unfortunate. Maybe that's why he's always brooding.
 
-got_nrc_counts <- got_nrc %>% 
-  count(pov, sentiment)
-
-ggplot(data = got_nrc_counts, aes(x = fct_reorder(sentiment, n), y = n)) +
-  geom_col() +
-  facet_wrap(~pov, scales = "free") +
-  coord_flip()
-```
-
+### END TASK 3
