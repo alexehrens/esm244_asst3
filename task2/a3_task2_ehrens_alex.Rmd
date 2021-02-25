@@ -1,0 +1,85 @@
+---
+title: "Task 2 - Working with raster data"
+author: "Alex Ehrens"
+date: "2/24/2021"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+# attach packages
+library(raster) 
+library(tidyverse)
+library(here)
+library(sf)
+library(fasterize)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(rgeos)
+```
+
+### Part 1 - Read in cetaceans raster files
+```{r}
+# there are many rasters to read in, so want to stack them into one raster
+cetacean_files <- list.files(path = here("task2", "ca_cetaceans"), pattern = "*tif", full.names = TRUE)
+
+cetacean_stack <- raster::stack(cetacean_files)
+```
+
+### Part 2 - Create a raster of species richness of cetaceans off coast of California
+```{r}
+# create a function to determine whether a species is present (value >0.6) or not in a given location
+is_present <- function(x, thresh = 0.6){
+  y <- ifelse(x >= thresh, 1, NA)
+  return(y)
+}
+
+# run the function using the stack of cetacean rasters
+cetacean_presence <- calc(cetacean_stack, fun = is_present)
+
+# sum to find the total richness of species in each raster cell
+cetacean_richness <- calc(cetacean_presence, fun = sum, na.rm = TRUE)
+
+# exploratory plot of the cetacean species richness raster
+plot(cetacean_richness, main = "Exploratory plot of Cetacean species richness raster")
+```
+
+### Part 3 - Create ggplot map of species richness raster
+```{r}
+# turn raster stack into data frame for plotting and mutate a column with the sum of present species
+cetaceans_df <- rasterToPoints(cetacean_richness) %>% 
+  as.data.frame()
+
+# set 0 values for sum to NA and then remove those cells so they don't show up on top of coastline map
+cetaceans_df$layer[cetaceans_df$layer == 0] <- NA
+
+cetaceans_df <- cetaceans_df %>% 
+  na.omit(layer)
+
+# read in spatial data of California coastline from {rnaturalearth} package
+earth <- ne_countries(scale = "medium", returnclass = "sf") %>% 
+  st_as_sf()
+
+# check if coordinate systems are the same - they are
+#st_crs(earth)
+#st_crs(cetacean_richness)
+
+### plot cetaceans richness raster off California coast
+ggplot() +
+  geom_raster(data = cetaceans_df, aes(x = x, y = y, fill = layer)) +
+  scale_fill_gradientn(colors = c("slategray1", "skyblue", "dodgerblue4")) +
+  geom_sf(data = earth, fill = "whitesmoke") +
+  coord_sf(xlim = c(-125,-115), ylim = c(32,38),
+           expand = 0) +
+  labs(title = "Cetacean species richness in the California Bight",
+       fill = "Richness \n(# of species)",
+       caption = "The predicted spatial distribution of cetacean species richness  in the California Bight. Species richness was \ncalculated by summing the total number of cetacean species present in each grid cell. Presence of each species \nwas determined by taking AquaMaps raster layers which show the probability of occurrence of 35 cetacean \nspecies and setting a threshold for being considered 'present' or 'not present'. For this analysis, the threshold \nwas set at 0.6, meaning that an occurrence probability of at least 0.6 meant that species was counted as being \n'present' in a given grid cell. Data from: AquaMaps (2016).")+
+  theme_bw()+
+  theme(axis.title = element_blank(),
+        plot.caption = element_text(hjust = 0))
+```
+
+### END TASK 2

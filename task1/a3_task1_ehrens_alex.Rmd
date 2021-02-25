@@ -1,0 +1,93 @@
+---
+title: "Task 1 - Spatial data visualization of Oil Spill Incidents"
+author: "Alex Ehrens"
+date: "2/23/2021"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+# attach packages
+library(tidyverse)
+library(here)
+library(janitor)
+library(sf)
+library(tmap)
+library(gstat)
+library(stars)
+```
+
+### Part 1. Read in spatial data and check/set projections
+```{r}
+# read in California oil spill incident dataset
+oil_spills <- read_sf(here("task1", "Oil_Spill_Incident_Tracking_%5Bds394%5D-shp"), layer = "Oil_Spill_Incident_Tracking_%5Bds394%5D") %>% 
+  clean_names()
+
+# read in California county boundary dataset
+ca_counties <- read_sf(here("task1", "ca_counties"), layer = "CA_Counties_TIGER2016") %>% 
+  clean_names() %>% 
+  select(name)
+```
+
+##### Oil spill dataset projection:
+```{r}
+# check projections
+st_crs(oil_spills)
+```
+##### California counties projection:
+```{r}
+st_crs(ca_counties)
+```
+
+Both shapefiles are already in the same (WGS_1984) projection, so there is no need to transform them into a new projection.
+
+### Part 2 - Create an interactive map of oil spill locations in tmap
+```{r}
+# start with static exploratory map using ggplot
+#ggplot() +
+#  geom_sf(data = ca_counties) +
+#  geom_sf(data = oil_spills)
+
+# map an interactive map with tmap
+tmap_mode("view")
+
+tmap_options(basemaps = c("Esri.WorldTopoMap", "Esri.WorldGrayCanvas", "OpenStreetMap"))
+
+tm_shape(oil_spills, name = "CA Oil Spills (2008)") +
+  tm_dots("specificlo", 
+          title = "Location of Oil Spill", 
+          palette = c("mediumblue", "brown", "springgreen4")) 
+```
+
+### Part 3 - Create a static chloropleth of the count of oil spills by county
+```{r}
+# filter only inland oil spills
+inland_oil_spills <- oil_spills %>% 
+  filter(inlandmari == "Inland")
+
+# join oil spill locations with counties dataset
+spill_county_join <- ca_counties %>% 
+  st_join(inland_oil_spills)
+
+# get counts of oil spills by county
+spill_counts <- spill_county_join %>% 
+  count(name)
+```
+
+```{r}
+# plot chloropleth of oil spill counts by county
+ggplot(data = spill_counts) +
+  geom_sf(aes(fill = n), color = "white", size = 0.1) +
+  scale_fill_gradientn(colors = c("lightgray","orange","red")) +
+  theme_minimal() +
+  labs(title = "Chloropleth of oil spill counts by county in California",
+       subtitle = "Data from 2008",
+       fill = "Number of oil \nspills by county",
+       caption = "A chloropleth describing the spatial distribution and counts of oil spill events that occurred in each \nCalifornia county in 2008. Data from the CDFW Oil Spill Incident Tracking dataset.") +
+  theme(plot.caption = element_text(hjust = 0))
+```
+
+### END TASK 1
