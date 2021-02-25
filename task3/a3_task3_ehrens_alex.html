@@ -183,8 +183,9 @@ summary {
 <div id="part-1.-read-in-and-wrangle-a-game-of-thrones-text" class="section level3">
 <h3>Part 1. Read in and wrangle A Game of Thrones text</h3>
 <pre class="r"><code># read in pdf of text
-got_text &lt;- pdf_text(here(&quot;task3&quot;, &quot;fire-blood-george-rr-martin&quot;, &quot;A-Game-of-Thrones-George-RR-Martin.pdf&quot;))</code></pre>
-<pre class="r"><code># wrangle text into tidy format
+got_text &lt;- pdf_text(here(&quot;task3&quot;, &quot;fire-blood-george-rr-martin&quot;, &quot;A-Game-of-Thrones-George-RR-Martin.pdf&quot;))
+
+# wrangle text into tidy format
 got_tidy &lt;- data.frame(got_text) %&gt;% 
   mutate(text_full = str_split(got_text, pattern = &quot;\\n&quot;)) %&gt;% 
   unnest(text_full) %&gt;%
@@ -202,8 +203,9 @@ got_df &lt;- got_tidy %&gt;%
     TRUE ~ NA_character_
   )) %&gt;% 
   fill(pov) %&gt;% 
-  mutate(pov = str_to_title(pov))</code></pre>
-<pre class="r"><code># get tokens of each word of the text, still organized by POV character
+  mutate(pov = str_to_title(pov))
+
+# get tokens of each word of the text, still organized by POV character
 got_tokens &lt;- got_df %&gt;% 
   unnest_tokens(word, text_full) %&gt;% 
   select(-got_text)
@@ -235,8 +237,9 @@ top_5_words &lt;- nonstop_no_names_counts %&gt;%
     pov == &quot;Daenerys&quot; ~ &quot;House Targaryen&quot;,
     pov == &quot;Tyrion&quot; ~ &quot;House Lannister&quot;,
     pov == &quot;Jon&quot; ~ &quot;Night&#39;s Watch&quot;
-  ))</code></pre>
-<pre class="r"><code># plot each character&#39;s top 5 most frequently used words
+  ))
+
+# plot each character&#39;s top 5 most frequently used words
 ggplot(data = top_5_words, aes(x = fct_reorder(word, n), y = n)) +
   geom_col(aes(fill = house)) +
   scale_fill_manual(values = c(&quot;gold2&quot;, &quot;darkgrey&quot;, &quot;red4&quot;, &quot;Black&quot;)) +

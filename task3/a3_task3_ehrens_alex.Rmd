@@ -24,9 +24,7 @@ library(ggwordcloud)
 ```{r, cache=TRUE}
 # read in pdf of text
 got_text <- pdf_text(here("task3", "fire-blood-george-rr-martin", "A-Game-of-Thrones-George-RR-Martin.pdf"))
-```
 
-```{r}
 # wrangle text into tidy format
 got_tidy <- data.frame(got_text) %>% 
   mutate(text_full = str_split(got_text, pattern = "\\n")) %>% 
@@ -46,9 +44,7 @@ got_df <- got_tidy %>%
   )) %>% 
   fill(pov) %>% 
   mutate(pov = str_to_title(pov))
-```
 
-```{r}
 # get tokens of each word of the text, still organized by POV character
 got_tokens <- got_df %>% 
   unnest_tokens(word, text_full) %>% 
@@ -85,9 +81,7 @@ top_5_words <- nonstop_no_names_counts %>%
     pov == "Tyrion" ~ "House Lannister",
     pov == "Jon" ~ "Night's Watch"
   ))
-```
 
-```{r}
 # plot each character's top 5 most frequently used words
 ggplot(data = top_5_words, aes(x = fct_reorder(word, n), y = n)) +
   geom_col(aes(fill = house)) +
