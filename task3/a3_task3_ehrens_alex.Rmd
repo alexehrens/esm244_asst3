@@ -97,6 +97,8 @@ ggplot(data = top_5_words, aes(x = fct_reorder(word, n), y = n)) +
        x = "Words",
        caption = "Figure 1 - A list of the 5 most frequently used words (not including stop words or character names/common titles) in \nA Game of Thrones by George RR Martin, grouped by each point-of-view characters' chapters. The fill color for each \ncharacter represents the color of the house to which they belong in the Game of Thrones universe.")+
   theme(plot.caption = element_text(hjust = 0))
+
+ggsave("got_word_frequency.jpg", path = here("task3"))
 ```
 
 ### Part 3. Sentiment Analysis using afinn lexicon
@@ -134,6 +136,8 @@ ggplot(data = afinn_means,
        y = "Mean Sentiment Value (from the 'afinn' lexicon')",
        x = "Character Name", 
        caption = "Figure 2 - The results of a sentiment analysis of words used in each POV character's chapters in A Game of Thrones \nby George RR Martin. The sentiment analysis uses the 'afinn' lexicon, which assigns a value from -5 to +5 for each \nword based on how negative or positive the meaning of that word is. The mean value for all words in each character's \nchapters provides a comparison of how negative the story arcs of each POV character are.")
+
+ggsave("got_sentiment_analysis.jpg", path = here("task3"))
 ```
 
 **Results:** it appears that of all the POV characters, Jon Snow had the most negative mean sentiment value of words used in his chapters throughout A Game of Thrones. While all of the other characters also had overall negative mean sentiment scores, Jon's chapters had the most negative value (`r round(afinn_means$mean_afinn[6], 2)`). A lot of unfortunate things happen to every character in this book, but it seems from this sentiment analysis that Jon Snow's story arc is most unfortunate. Maybe that's why he's always brooding.

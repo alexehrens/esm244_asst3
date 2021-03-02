@@ -80,6 +80,8 @@ ggplot() +
   theme_bw()+
   theme(axis.title = element_blank(),
         plot.caption = element_text(hjust = 0))
+
+ggsave("cetacean_raster_plot.jpg", path = here("task2"))
 ```
 
 ### END TASK 2
